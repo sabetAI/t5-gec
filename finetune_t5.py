@@ -42,9 +42,9 @@ args_dict = dict(
     eval_batch_size=48,
     num_train_epochs=2,
     gradient_accumulation_steps=4,
-    n_gpu=2,
+    n_gpu=1,
     early_stop_callback=False,
-    fp_16=True,  # if you want to enable 16-bit training then install apex and set this to true
+    fp_16=False,  # if you want to enable 16-bit training then install apex and set this to true
     opt_level="O1",  # you can find out more on optimisation levels here https://nvidia.github.io/apex/amp.html#opt-levels-and-properties
     max_grad_norm=1.0,  # if you enable 16-bit training then set this to a sensible value, 0.5 is a good default
     seed=42,
@@ -55,13 +55,13 @@ args = argparse.Namespace(**args_dict)
 
 checkpoint_callback = pl.callbacks.ModelCheckpoint(
     filepath=args.output_dir,
-    prefix="com_",
+    prefix="com_base_",
     monitor="val_loss",
-    mode="min",
-    save_top_k=5,
+    save_top_k=-1,
+    period=-1,
 )
 
-tokenizer = T5Tokenizer.from_pretrained("t5-base")
+tokenizer = T5Tokenizer.from_pretrained(args.tokenizer_name_or_path)
 
 train_params = dict(
     accumulate_grad_batches=args.gradient_accumulation_steps,
@@ -72,7 +72,7 @@ train_params = dict(
     amp_level=args.opt_level,
     gradient_clip_val=args.max_grad_norm,
     checkpoint_callback=checkpoint_callback,
-    distributed_backend="ddp",
+    val_check_interval=0.1,
 )
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ from typing import Callable, Dict, Iterable, List, Union
 
 import numpy as np
 import torch
-from torch.utils.data import Dataset, Sampler
+from torch.utils.data import Dataset, IterableDataset, Sampler
 
 from transformers import BartTokenizer
 
@@ -157,6 +157,87 @@ class LegacySeq2SeqDataset(AbstractSeq2SeqDataset):
             "labels": y,
         }
         return batch
+
+
+# class Seq2SeqIterDataset(IterableDataset):
+#     def __init__(
+#         self,
+#         tokenizer,
+#         data_dir,
+#         max_source_length,
+#         max_target_length,
+#         type_path="train",
+#         n_obs=None,
+#         src_lang=None,
+#         tgt_lang=None,
+#         prefix="",
+#     ):
+#         super().__init__()
+#         self.src_file = Path(data_dir).joinpath(type_path + ".src")
+#         self.tgt_file = Path(data_dir).joinpath(type_path + ".trg")
+#         self.src_lens = self.get_char_lens(self.src_file)
+#         self.max_source_length = max_source_length
+#         self.max_target_length = max_target_length
+#         assert min(self.src_lens) > 0, f"found empty line in {self.src_file}"
+#         self.tokenizer = tokenizer
+#         self.prefix = prefix
+#         if n_obs is not None:
+#             self.src_lens = self.src_lens[:n_obs]
+#         self.pad_token_id = self.tokenizer.pad_token_id
+#         self.src_lang = src_lang
+#         self.tgt_lang = tgt_lang
+#         self.add_prefix_space = isinstance(self.tokenizer, BartTokenizer)
+
+#     def __len__(self):
+#         return len(self.src_lens)
+
+#     def __iter__(self, index) -> Dict[str, torch.Tensor]:
+#         worker_info = torch.utils.data.get_worker_info()
+#         if worker_info is None:  # single-process data loading, return the full iterator
+#             iter_start = self.start
+#             iter_end = self.end
+#         else:  # in a worker process
+#             # split workload
+#             per_worker = int(math.ceil((self.end - self.start) / float(worker_info.num_workers)))
+#             worker_id = worker_info.id
+#             iter_start = self.start + worker_id * per_worker
+#             iter_end = min(iter_start + per_worker, self.end)
+#         return iter(range(iter_start, iter_end))
+#         """Call tokenizer on src and tgt_lines"""
+#         index = index + 1  # linecache starts at 1
+#         source_line = self.prefix + linecache.getline(str(self.src_file), index).rstrip(
+#             "\n"
+#         )
+#         tgt_line = linecache.getline(str(self.tgt_file), index).rstrip("\n")
+#         assert source_line, f"empty source line for index {index}"
+#         assert tgt_line, f"empty tgt line for index {index}"
+#         source_inputs = encode_line(self.tokenizer, source_line, self.max_source_length)
+#         target_inputs = encode_line(self.tokenizer, tgt_line, self.max_target_length)
+
+#         source_ids = source_inputs["input_ids"].squeeze()
+#         target_ids = target_inputs["input_ids"].squeeze()
+#         src_mask = source_inputs["attention_mask"].squeeze()
+#         return {
+#             "input_ids": source_ids,
+#             "attention_mask": src_mask,
+#             "labels": target_ids,
+#         }
+
+#     def collate_fn(self, batch) -> Dict[str, torch.Tensor]:
+#         input_ids = torch.stack([x["input_ids"] for x in batch])
+#         masks = torch.stack([x["attention_mask"] for x in batch])
+#         target_ids = torch.stack([x["labels"] for x in batch])
+#         pad_token_id = self.pad_token_id
+#         y = trim_batch(target_ids, pad_token_id)
+#         source_ids, source_mask = trim_batch(
+#             input_ids, pad_token_id, attention_mask=masks
+#         )
+#         batch = {
+#             "input_ids": source_ids,
+#             "attention_mask": source_mask,
+#             "labels": y,
+#         }
+#         return batch
 
 
 def encode_line(

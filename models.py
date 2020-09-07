@@ -16,6 +16,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from ipdb import set_trace
+
 
 class T5FineTuner(pl.LightningModule):
     def __init__(self, hparams):
@@ -64,7 +66,7 @@ class T5FineTuner(pl.LightningModule):
         loss = self._step(batch)
 
         tensorboard_logs = {"train_loss": loss}
-        return {"loss": loss, "log": tensorboard_logs}
+        return {"loss": loss, "log": tensorboard_logs, "global_step": self.global_step}
 
     def training_epoch_end(self, outputs):
         avg_train_loss = torch.stack([x["loss"] for x in outputs]).mean()
@@ -77,7 +79,7 @@ class T5FineTuner(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         loss = self._step(batch)
-        return {"val_loss": loss}
+        return {"val_loss": loss, "global_step": self.global_step}
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
@@ -86,6 +88,7 @@ class T5FineTuner(pl.LightningModule):
             "avg_val_loss": avg_loss,
             "log": tensorboard_logs,
             "progress_bar": tensorboard_logs,
+            "global_step": self.global_step,
         }
 
     def configure_optimizers(self):
