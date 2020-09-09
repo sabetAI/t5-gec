@@ -2,6 +2,8 @@ import pytorch_lightning as pl
 
 from transformers import (
     AdamW,
+    AutoTokenizer,
+    AutoModelWithLMHead,
     T5ForConditionalGeneration,
     T5Tokenizer,
     get_linear_schedule_with_warmup,
@@ -11,6 +13,7 @@ import torch
 
 from torch.utils.data import Dataset, DataLoader
 from datasets import Seq2SeqDataset, LegacySeq2SeqDataset
+from pathlib import Path
 
 import logging
 
@@ -23,11 +26,8 @@ class T5FineTuner(pl.LightningModule):
     def __init__(self, hparams):
         super(T5FineTuner, self).__init__()
         self.hparams = hparams
-
-        self.model = T5ForConditionalGeneration.from_pretrained(
-            hparams.model_name_or_path
-        )
-        self.tokenizer = T5Tokenizer.from_pretrained(hparams.tokenizer_name_or_path)
+        self.model = AutoModelWithLMHead.from_pretrained(hparams.model_name_or_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(hparams.tokenizer_name_or_path)
 
     def is_logger(self):
         return self.trainer.proc_rank <= 0
@@ -93,7 +93,6 @@ class T5FineTuner(pl.LightningModule):
 
     def configure_optimizers(self):
         "Prepare optimizer and schedule (linear warmup and decay)"
-
         model = self.model
         no_decay = ["bias", "LayerNorm.weight"]
         optimizer_grouped_parameters = [

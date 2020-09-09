@@ -19,9 +19,11 @@ import pytorch_lightning as pl
 
 from utils import set_seed
 from models import T5FineTuner
-from transformers import T5Tokenizer
+from transformers import T5Tokenizer, AutoTokenizer
 
 from torch.utils.data import DataLoader, random_split
+
+from ipdb import set_trace
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +40,10 @@ args_dict = dict(
     weight_decay=0.0,
     adam_epsilon=1e-8,
     warmup_steps=0,
-    train_batch_size=48,
-    eval_batch_size=48,
+    train_batch_size=64,
+    eval_batch_size=64,
     num_train_epochs=2,
-    gradient_accumulation_steps=4,
+    gradient_accumulation_steps=16,
     n_gpu=1,
     early_stop_callback=False,
     fp_16=False,  # if you want to enable 16-bit training then install apex and set this to true
@@ -50,18 +52,20 @@ args_dict = dict(
     seed=42,
 )
 
-args_dict.update({"data_dir": "data", "output_dir": "com-gec", "num_train_epochs": 2})
+args_dict.update(
+    {"data_dir": "data/test", "output_dir": "com-gec", "num_train_epochs": 2}
+)
 args = argparse.Namespace(**args_dict)
 
 checkpoint_callback = pl.callbacks.ModelCheckpoint(
     filepath=args.output_dir,
-    prefix="com_base_",
+    prefix="com_test",
     monitor="val_loss",
     save_top_k=-1,
     period=-1,
 )
 
-tokenizer = T5Tokenizer.from_pretrained(args.tokenizer_name_or_path)
+tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name_or_path)
 
 train_params = dict(
     accumulate_grad_batches=args.gradient_accumulation_steps,
