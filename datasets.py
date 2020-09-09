@@ -8,6 +8,9 @@ from torch.utils.data import Dataset, IterableDataset, Sampler
 
 from transformers import BartTokenizer
 
+from tqdm import tqdm
+import os
+
 
 class SortishSampler(Sampler):
     "Go through the text data by order of src length with a bit of randomness. From fastai repo."
@@ -166,6 +169,8 @@ class Seq2SeqIterDataset(IterableDataset):
         data_dir,
         max_source_length,
         max_target_length,
+        world_size,
+        rank,
         type_path="train",
     ):
         super().__init__()
@@ -175,6 +180,8 @@ class Seq2SeqIterDataset(IterableDataset):
         self.max_source_length = max_source_length
         self.max_target_length = max_target_length
         self.pad_token_id = self.tokenizer.pad_token_id
+        self.world_size = world_size
+        self.rank = rank
 
     def __len__(self):
         def file_len(fname):
@@ -183,10 +190,15 @@ class Seq2SeqIterDataset(IterableDataset):
                     pass
             return i + 1
 
-        src_file_path = Path(self.data_dir).joinpath(self.type_path + ".0.src")
-        return file_len(src_file_path)
+        src_file_path = Path(self.data_dir).joinpath(self.type_path + ".src")
+        self.len = file_len(src_file_path)
+        return self.len
 
-    def process_data(self, src_file, trg_file):
+    def process_data(self, src_file, trg_file, n_skips):
+        for _ in tqdm(range(n_skips)):
+            next(src_file)
+            next(trg_file)
+
         for src_line, trg_line in zip(src_file, trg_file):
             assert src_line, f"empty source line"
             assert trg_line, f"empty tgt line"
@@ -203,17 +215,14 @@ class Seq2SeqIterDataset(IterableDataset):
 
     def __iter__(self) -> Dict[str, torch.Tensor]:
         worker_info = torch.utils.data.get_worker_info()
-        worker_id = str(worker_info.id)
-        self.src_file_path = Path(self.data_dir).joinpath(
-            self.type_path + "." + worker_id + ".src"
-        )
-        self.trg_file_path = Path(self.data_dir).joinpath(
-            self.type_path + "." + worker_id + ".trg"
-        )
+        chunk_size = self.len // (worker_info.num_workers * self.world_size)
+        n_skips = ((self.rank * worker_info.num_workers) + worker_info.id) * chunk_size
+        self.src_file_path = Path(self.data_dir).joinpath(self.type_path + ".src")
+        self.trg_file_path = Path(self.data_dir).joinpath(self.type_path + ".trg")
         self.src_file = open(self.src_file_path, encoding="utf-8")
         self.trg_file = open(self.trg_file_path, encoding="utf-8")
 
-        return self.process_data(self.src_file, self.trg_file)
+        return self.process_data(self.src_file, self.trg_file, n_skips)
 
     def collate_fn(self, batch) -> Dict[str, torch.Tensor]:
         input_ids = torch.stack([x["input_ids"] for x in batch])
@@ -257,4 +266,3 @@ def trim_batch(
         return input_ids[:, keep_column_mask]
     else:
         return (input_ids[:, keep_column_mask], attention_mask[:, keep_column_mask])
-

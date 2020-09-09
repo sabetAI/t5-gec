@@ -149,7 +149,10 @@ class T5FineTuner(pl.LightningModule):
 
     def train_dataloader(self):
         train_dataset = get_dataset(
-            tokenizer=self.tokenizer, type_path="train", args=self.hparams
+            tokenizer=self.tokenizer,
+            type_path="train",
+            args=self.hparams,
+            rank=self.global_rank,
         )
         dataloader = DataLoader(
             train_dataset,
@@ -176,7 +179,10 @@ class T5FineTuner(pl.LightningModule):
 
     def val_dataloader(self):
         val_dataset = get_dataset(
-            tokenizer=self.tokenizer, type_path="val", args=self.hparams
+            tokenizer=self.tokenizer,
+            type_path="val",
+            args=self.hparams,
+            rank=self.global_rank,
         )
         return DataLoader(
             val_dataset,
@@ -186,11 +192,13 @@ class T5FineTuner(pl.LightningModule):
         )
 
 
-def get_dataset(tokenizer, type_path, args):
+def get_dataset(tokenizer, type_path, args, rank):
     return Seq2SeqIterDataset(
         tokenizer=tokenizer,
         data_dir=args.data_dir,
         type_path=type_path,
         max_source_length=args.max_seq_length,
         max_target_length=args.max_seq_length,
+        world_size=args.n_gpu,
+        rank=rank,
     )
