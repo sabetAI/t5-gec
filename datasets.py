@@ -174,6 +174,17 @@ class Seq2SeqIterDataset(IterableDataset):
         self.tokenizer = tokenizer
         self.max_source_length = max_source_length
         self.max_target_length = max_target_length
+        self.pad_token_id = self.tokenizer.pad_token_id
+
+    def __len__(self):
+        def file_len(fname):
+            with open(fname) as f:
+                for i, l in enumerate(f):
+                    pass
+            return i + 1
+
+        src_file_path = Path(self.data_dir).joinpath(self.type_path + ".0.src")
+        return file_len(src_file_path)
 
     def process_data(self, src_file, trg_file):
         for src_line, trg_line in zip(src_file, trg_file):
@@ -192,7 +203,7 @@ class Seq2SeqIterDataset(IterableDataset):
 
     def __iter__(self) -> Dict[str, torch.Tensor]:
         worker_info = torch.utils.data.get_worker_info()
-        worker_id = worker_info.id
+        worker_id = str(worker_info.id)
         self.src_file_path = Path(self.data_dir).joinpath(
             self.type_path + "." + worker_id + ".src"
         )
@@ -208,10 +219,9 @@ class Seq2SeqIterDataset(IterableDataset):
         input_ids = torch.stack([x["input_ids"] for x in batch])
         masks = torch.stack([x["attention_mask"] for x in batch])
         target_ids = torch.stack([x["labels"] for x in batch])
-        pad_token_id = self.pad_token_id
-        y = trim_batch(target_ids, pad_token_id)
+        y = trim_batch(target_ids, self.pad_token_id)
         source_ids, source_mask = trim_batch(
-            input_ids, pad_token_id, attention_mask=masks
+            input_ids, self.pad_token_id, attention_mask=masks
         )
         batch = {
             "input_ids": source_ids,

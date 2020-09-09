@@ -12,7 +12,7 @@ from transformers import (
 import torch
 
 from torch.utils.data import Dataset, DataLoader
-from datasets import Seq2SeqDataset, LegacySeq2SeqDataset
+from datasets import Seq2SeqDataset, LegacySeq2SeqDataset, Seq2SeqIterDataset
 from pathlib import Path
 
 import logging
@@ -155,8 +155,7 @@ class T5FineTuner(pl.LightningModule):
             train_dataset,
             batch_size=self.hparams.train_batch_size,
             drop_last=True,
-            shuffle=True,
-            num_workers=4,
+            num_workers=2,
             collate_fn=train_dataset.collate_fn,
         )
         t_total = (
@@ -182,13 +181,13 @@ class T5FineTuner(pl.LightningModule):
         return DataLoader(
             val_dataset,
             batch_size=self.hparams.eval_batch_size,
-            num_workers=4,
+            num_workers=2,
             collate_fn=val_dataset.collate_fn,
         )
 
 
 def get_dataset(tokenizer, type_path, args):
-    return LegacySeq2SeqDataset(
+    return Seq2SeqIterDataset(
         tokenizer=tokenizer,
         data_dir=args.data_dir,
         type_path=type_path,
