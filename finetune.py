@@ -19,7 +19,8 @@ import pytorch_lightning as pl
 
 from utils import set_seed
 from models import T5FineTuner
-from transformers import T5Tokenizer, AutoTokenizer
+
+from transformers import BartTokenizer
 
 from torch.utils.data import DataLoader, random_split
 
@@ -33,8 +34,8 @@ set_seed(42)
 args_dict = dict(
     data_dir="",  # path for data files
     output_dir="",  # path to save the checkpoints
-    model_name_or_path="t5-base",
-    tokenizer_name_or_path="t5-base",
+    model_name_or_path="facebook/bart-large",
+    tokenizer_name_or_path="facebook/bart-large",
     max_seq_length=48,
     learning_rate=1e-4,
     weight_decay=0.0,
@@ -44,7 +45,7 @@ args_dict = dict(
     eval_batch_size=64,
     num_train_epochs=2,
     gradient_accumulation_steps=16,
-    n_gpu=2,
+    n_gpu=0,
     early_stop_callback=False,
     fp_16=False,  # if you want to enable 16-bit training then install apex and set this to true
     opt_level="O1",  # you can find out more on optimisation levels here https://nvidia.github.io/apex/amp.html#opt-levels-and-properties
@@ -53,19 +54,19 @@ args_dict = dict(
 )
 
 args_dict.update(
-    {"data_dir": "data/test", "output_dir": "com-gec", "num_train_epochs": 2}
+    {"data_dir": "data/exp", "output_dir": "bart-gec", "num_train_epochs": 2}
 )
 args = argparse.Namespace(**args_dict)
 
 checkpoint_callback = pl.callbacks.ModelCheckpoint(
     filepath=args.output_dir,
-    prefix="com_test",
+    prefix="bart_",
     monitor="val_loss",
     save_top_k=-1,
     period=-1,
 )
 
-tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name_or_path)
+tokenizer = BartTokenizer.from_pretrained(args.tokenizer_name_or_path)
 
 train_params = dict(
     accumulate_grad_batches=args.gradient_accumulation_steps,

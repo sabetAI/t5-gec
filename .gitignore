@@ -7,4 +7,4 @@ com-gec/
 MNIST/
 t5-base-checkpt/
 t5-large-checkpt/
-*out.*
+outputs/

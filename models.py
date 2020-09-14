@@ -2,10 +2,8 @@ import pytorch_lightning as pl
 
 from transformers import (
     AdamW,
-    AutoTokenizer,
-    AutoModelWithLMHead,
-    T5ForConditionalGeneration,
-    T5Tokenizer,
+    BartForConditionalGeneration,
+    BartTokenizer,
     get_linear_schedule_with_warmup,
 )
 
@@ -26,8 +24,10 @@ class T5FineTuner(pl.LightningModule):
     def __init__(self, hparams):
         super(T5FineTuner, self).__init__()
         self.hparams = hparams
-        self.model = AutoModelWithLMHead.from_pretrained(hparams.model_name_or_path)
-        self.tokenizer = AutoTokenizer.from_pretrained(hparams.tokenizer_name_or_path)
+        self.model = BartForConditionalGeneration.from_pretrained(
+            hparams.model_name_or_path
+        )
+        self.tokenizer = BartTokenizer.from_pretrained(hparams.tokenizer_name_or_path)
 
     def is_logger(self):
         return self.trainer.proc_rank <= 0
@@ -40,6 +40,7 @@ class T5FineTuner(pl.LightningModule):
         decoder_attention_mask=None,
         lm_labels=None,
     ):
+        set_trace()
         return self.model(
             input_ids,
             attention_mask=attention_mask,
@@ -189,6 +190,7 @@ class T5FineTuner(pl.LightningModule):
             batch_size=self.hparams.eval_batch_size,
             num_workers=2,
             collate_fn=val_dataset.collate_fn,
+            drop_last=True,
         )
 
 

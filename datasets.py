@@ -209,13 +209,17 @@ class Seq2SeqIterDataset(IterableDataset):
                 self.tokenizer, trg_line.strip("\n"), self.max_target_length
             )
             src_ids = src_inputs["input_ids"].squeeze()
+            print(src_ids)
             trg_ids = trg_inputs["input_ids"].squeeze()
             src_mask = src_inputs["attention_mask"].squeeze()
             yield {"input_ids": src_ids, "attention_mask": src_mask, "labels": trg_ids}
 
     def __iter__(self) -> Dict[str, torch.Tensor]:
         worker_info = torch.utils.data.get_worker_info()
-        chunk_size = self.len // (worker_info.num_workers * self.world_size)
+        if self.world_size:
+            chunk_size = self.len // (worker_info.num_workers * self.world_size)
+        else:
+            chunk_size = self.len // (worker_info.num_workers)
         n_skips = ((self.rank * worker_info.num_workers) + worker_info.id) * chunk_size
         self.src_file_path = Path(self.data_dir).joinpath(self.type_path + ".src")
         self.trg_file_path = Path(self.data_dir).joinpath(self.type_path + ".trg")
@@ -243,7 +247,7 @@ class Seq2SeqIterDataset(IterableDataset):
 def encode_line(
     tokenizer, line, max_length, pad_to_max_length=True, return_tensors="pt"
 ):
-    """Only used by LegacyDataset"""
+    # """Only used by LegacyDataset"""
     extra_kw = (
         {"add_prefix_space": True} if isinstance(tokenizer, BartTokenizer) else {}
     )
@@ -251,7 +255,6 @@ def encode_line(
         [line],
         max_length=max_length,
         padding="max_length" if pad_to_max_length else None,
-        truncation=True,
         return_tensors=return_tensors,
         **extra_kw,
     )
